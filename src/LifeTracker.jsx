@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   LayoutDashboard, Target, Activity, LogOut, Lock,
-  Plus, Delete, X, Check, Trash2, ChevronRight, ChevronDown, CornerDownRight, Pencil, Eye, EyeOff
+  Plus, Delete, X, Check, Trash2, ChevronRight, ChevronDown, CornerDownRight, Pencil, Eye, EyeOff, Menu
 } from "lucide-react";
 import { supabase, supabaseConfigured } from "./supabaseClient";
+
+// Tracks whether we're on a narrow (phone/tablet) screen so layout can adapt.
+function useIsMobile(breakpoint = 820) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < breakpoint : false
+  );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [breakpoint]);
+  return isMobile;
+}
 
 /*
   Life Tracker
@@ -490,10 +503,16 @@ export default function App() {
       background: C.green, color: "rgba(255,255,255,0.6)", fontFamily: "system-ui, sans-serif" }}>Loading your data…</div>
   );
 
+  return <AppShell page={page} setPage={setPage} store={store} email={session.user.email} />;
+}
+
+function AppShell({ page, setPage, store, email }) {
+  const isMobile = useIsMobile();
   return (
-    <div style={{ display: "flex", height: "100vh", background: C.bg, color: C.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <Sidebar page={page} setPage={setPage} onSignOut={() => supabase.auth.signOut()} email={session.user.email} />
-      <main style={{ flex: 1, overflowY: "auto", padding: "32px 40px" }}>
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", height: "100vh",
+      background: C.bg, color: C.ink, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <Sidebar page={page} setPage={setPage} onSignOut={() => supabase.auth.signOut()} email={email} isMobile={isMobile} />
+      <main style={{ flex: 1, overflowY: "auto", padding: isMobile ? "20px 16px 40px" : "32px 40px" }}>
         {page === "today" && <Today store={store} />}
         {page === "goals" && <Goals store={store} />}
         {page === "insights" && <Insights store={store} />}
@@ -502,7 +521,43 @@ export default function App() {
   );
 }
 
-function Sidebar({ page, setPage, onSignOut, email }) {
+function Sidebar({ page, setPage, onSignOut, email, isMobile }) {
+  const [open, setOpen] = useState(false);
+
+  if (isMobile) {
+    // Top bar with a hamburger that opens a dropdown menu.
+    return (
+      <header style={{ background: C.panel, borderBottom: `1px solid ${C.line}`, position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px" }}>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, margin: 0 }}>Life Tracker</h2>
+          <button onClick={() => setOpen((o) => !o)} aria-label="Menu"
+            style={{ background: "none", border: "none", cursor: "pointer", color: C.ink, padding: 6 }}>
+            {open ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+        {open && (
+          <nav style={{ borderTop: `1px solid ${C.line}`, padding: 8 }}>
+            {NAV.map(({ id, label, icon: Icon }) => {
+              const active = page === id;
+              return (
+                <button key={id} onClick={() => { setPage(id); setOpen(false); }}
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderRadius: 10, width: "100%",
+                    border: "none", cursor: "pointer", textAlign: "left", fontSize: 16, fontWeight: active ? 600 : 500,
+                    background: active ? C.green : "transparent", color: active ? "#fff" : C.muted }}>
+                  <Icon size={18} /> {label}
+                </button>
+              );
+            })}
+            {email && <div style={{ padding: "10px 14px 4px", fontSize: 12, color: C.muted }}>{email}</div>}
+            <button onClick={onSignOut} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderRadius: 10, width: "100%", border: "none", cursor: "pointer", background: "transparent", color: C.muted, fontSize: 16 }}>
+              <LogOut size={18} /> Sign out
+            </button>
+          </nav>
+        )}
+      </header>
+    );
+  }
+
   return (
     <aside style={{ width: 240, background: C.panel, borderRight: `1px solid ${C.line}`, display: "flex", flexDirection: "column", padding: "24px 16px" }}>
       <h2 style={{ fontFamily: "Georgia, serif", fontSize: 22, margin: "0 12px 28px" }}>Life Tracker</h2>
