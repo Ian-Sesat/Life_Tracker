@@ -1186,7 +1186,7 @@ function Insights({ store }) {
 
               {/* spending breakdown for the range */}
               {byCat.length > 0 && (
-                <Card>
+                <Card style={{ marginBottom: 16 }}>
                   <Eyebrow>Where the money went · {rangeLabel}</Eyebrow>
                   {byCat.map(({ c, total }) => (
                     <div key={c} style={{ marginBottom: 10 }}>
@@ -1198,6 +1198,30 @@ function Insights({ store }) {
                   ))}
                 </Card>
               )}
+
+              {/* every expense in range — deletable, so mistakes can be removed */}
+              {(() => {
+                const rangeExpenses = store.expenses
+                  .filter((e) => e.date >= fromISO && e.date <= toISO)
+                  .sort((a, b) => (a.date < b.date ? 1 : -1));
+                if (!rangeExpenses.length) return null;
+                return (
+                  <Card>
+                    <Eyebrow>All entries · {rangeLabel}</Eyebrow>
+                    {rangeExpenses.map((e) => (
+                      <div key={e.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                        fontSize: 14, padding: "8px 0", borderBottom: `1px solid ${C.line}` }}>
+                        <span>{e.category} <span style={{ color: C.muted, fontSize: 12 }}>· {e.date}</span></span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          €{e.amount.toFixed(2)}
+                          <button onClick={() => store.deleteExpense(e.id)} title="Delete entry"
+                            style={{ ...iconBtn, color: "#B4504A", padding: 2 }}><Trash2 size={15} /></button>
+                        </span>
+                      </div>
+                    ))}
+                  </Card>
+                );
+              })()}
             </>
           )}
         </>
